@@ -70,9 +70,7 @@ class DioModule {
         dio.interceptors.add(
           InterceptorsWrapper(
             onRequest: (options, handler) async {
-              String authorization = getGetAccessToken.call() != null
-                  ? 'Bearer ${getGetAccessToken.call()}'
-                  : '';
+              String authorization = getGetAccessToken.call() != null ? 'Bearer ${getGetAccessToken.call()}' : '';
               options.headers['Authorization'] = authorization;
               handler.next(options);
             },
@@ -133,3 +131,10 @@ class MoonResponse extends Response {
     required super.data,
   });
 }
+
+// {
+//     "data": {
+//     },
+//     "succeeded": true,
+//     "errors": []
+// }
