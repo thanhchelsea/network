@@ -1,11 +1,19 @@
+import 'package:dio/dio.dart';
 import 'package:network/network.dart';
 import 'dio.dart';
 
 class NetworkPackage {
   void init({
-    required String baseUrl,
-    required GetAccessToken getGetAccessToken,
+    String? baseUrl,
+    GetAccessToken? getGetAccessToken,
+    Function(Response<dynamic> res, ResponseInterceptorHandler han)? onResponse,
+    String? dioNameForNewDev,
   }) {
-    DioModule.setup(baseUrl: baseUrl, getGetAccessToken: getGetAccessToken);
+    DioModule.setup(
+      baseUrl: baseUrl,
+      getGetAccessToken: getGetAccessToken,
+      dioNameForNewDev: dioNameForNewDev,
+      onResponse: onResponse,
+    );
   }
 }

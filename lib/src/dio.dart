@@ -14,33 +14,40 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 Logger logger = Logger();
 
 typedef GetAccessToken = String? Function();
-const String dioInstanceName = 'dioInstance';
+const String newDioWithBase = 'newDioWithBase';
+var getInstance = GetIt.instance;
 
 class DioModule {
   // DioModule._();
   static final GetIt _injector = GetIt.instance;
 
-  String get getInstanceName => dioInstanceName;
+  String get getInstanceName => newDioWithBase;
   static void setup({
-    required String baseUrl,
-    required GetAccessToken getGetAccessToken,
+    String? baseUrl,
+    GetAccessToken? getGetAccessToken,
+    Function(Response<dynamic> res, ResponseInterceptorHandler han)? onResponse,
+    String? dioNameForNewDev,
   }) {
     _setupDio(
       baseUrl: baseUrl,
       getGetAccessToken: getGetAccessToken,
+      dioNameForNewDev: dioNameForNewDev,
+      onResponse: onResponse,
     );
   }
 
   static void _setupDio({
-    required String baseUrl,
-    required GetAccessToken getGetAccessToken,
+    String? baseUrl,
+    GetAccessToken? getGetAccessToken,
+    Function(Response<dynamic> res, ResponseInterceptorHandler han)? onResponse,
+    String? dioNameForNewDev,
   }) {
     /// Dio
     _injector.registerLazySingleton<Dio>(
       () {
         final Dio dio = Dio(
           BaseOptions(
-            baseUrl: baseUrl,
+            baseUrl: baseUrl ?? '',
             sendTimeout: const Duration(seconds: DioConfig.timeout),
             receiveTimeout: const Duration(seconds: DioConfig.timeout),
             headers: {
@@ -70,11 +77,19 @@ class DioModule {
         dio.interceptors.add(
           InterceptorsWrapper(
             onRequest: (options, handler) async {
-              String authorization = getGetAccessToken.call() != null ? 'Bearer ${getGetAccessToken.call()}' : '';
-              options.headers['Authorization'] = authorization;
+              //thằng này để lấy header của dio đã có trong moon, không đụng vào sửa được. nohope lắm
+              options.headers = {..._injector<Dio>().options.headers};
+              // String authorization = getGetAccessToken.call() != null ? 'Bearer ${getGetAccessToken.call()}' : '';
+              // options.headers['Authorization'] = authorization;
               handler.next(options);
             },
-            onResponse: handleResponse,
+            onResponse: (response, handler) {
+              if (onResponse != null) {
+                onResponse.call(response, handler);
+              } else {
+                handleResponse(response, handler);
+              }
+            },
             onError: (e, handler) async {
               logger.d('onError dio_module: $e');
               return handler.next(e);
@@ -84,52 +99,37 @@ class DioModule {
 
         return dio;
       },
-      instanceName: dioInstanceName,
+      instanceName: dioNameForNewDev ?? newDioWithBase,
     );
   }
 
   static void handleResponse(
-    Response<dynamic> e,
+    Response<dynamic> response,
     ResponseInterceptorHandler handler,
   ) {
-    if (e.data['succeeded'] != ResponseConfig.success) {
-      debugPrint('API ERROR: ${e.data['succeeded']}');
+    //kiểm tra trạng thái success hay không ?
+    if (response.data['succeeded'] != ResponseConfig.success) {
+      debugPrint('API ERROR: ');
       handler.reject(
         DioException(
           requestOptions: RequestOptions(),
           response: Response(
             requestOptions: RequestOptions(),
-            statusMessage: (e.data['errors'] as List<String>).join(' ,'),
+            statusMessage: (response.data['errors'] as List<String>).join(' ,'),
             // statusCode: e.data['status'],
-            data: e.data,
+            data: response.data,
           ),
         ),
       );
     } else {
-      debugPrint('API SUCCESSFULLY: ${e.data['succeeded']}');
-      final response = Response(
-        data: e.data,
+      debugPrint('API SUCCESSFULLY: ');
+      final dataResponse = Response(
+        data: response.data,
         requestOptions: RequestOptions(),
       );
-      // final response = MoonResponse(
-      //   page: e.data['page'] != null
-      //       ? Page.fromJson(e.data['page'] as Map<String, dynamic>)
-      //       : null,
-      //   requestOptions: RequestOptions(),
-      //   data: e.data['data'],
-      // );
-      handler.next(response);
+      handler.next(dataResponse);
     }
   }
-}
-
-class MoonResponse extends Response {
-  Page? page;
-  MoonResponse({
-    this.page,
-    required super.requestOptions,
-    required super.data,
-  });
 }
 
 // {

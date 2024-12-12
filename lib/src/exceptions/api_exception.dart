@@ -12,10 +12,9 @@ class ApiException implements Exception {
 
   factory ApiException.fromDioError(DioException error) {
     return ApiException(
-      succeeded: error.response?.data['succeeded'] as bool?,
-      errors:
-          List<String>.from(error.response?.data['errors'] as List<dynamic>),
-      data: error.response?.data['data'],
+      succeeded: error.response?.data['succeeded'] as bool? ?? false,
+      errors: List<String>.from(error.response?.data['errors'] as List<dynamic>? ?? [error.message ?? '']),
+      data: error.response?.data['data'] ?? error.response?.data,
     );
   }
   dynamic data;
@@ -28,12 +27,10 @@ extension HandleExceptionExtensions<T> on Future<T> {
     return onError(
       (exception, stackTrace) {
         final DioException dioError = exception as DioException;
-        if (dioError.response != null &&
-            dioError.response?.statusCode != HttpStatus.ok) {
+        if (dioError.response != null && dioError.response?.statusCode != HttpStatus.ok) {
           throw ApiException.fromDioError(dioError);
         } else {
-          final NetworkExceptions exceptions =
-              NetworkExceptions.getDioException(exception);
+          final NetworkExceptions exceptions = NetworkExceptions.getDioException(exception);
           throw exceptions;
         }
       },
